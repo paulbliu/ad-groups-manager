@@ -1,0 +1,262 @@
+# Paste into screen "scrReview": Tree view → select scrReview → right-click → Paste code (or Ctrl+V).
+# Create BOTH screens (scrReview, scrRemovals) before pasting, so Navigate() formulas resolve.
+- lblReviewTitle:
+    Control: Label@2.5.1
+    Properties:
+      Text: ="OPCR AD Groups Manager – Review"
+      X: =20
+      Y: =10
+      Width: =700
+      Height: =44
+      Size: =20
+      FontWeight: =FontWeight.Bold
+      OnSelect: =false
+      TabIndex: =-1
+- btnGoRemovals:
+    Control: Classic/Button@2.2.0
+    Properties:
+      Text: ="Approved removals"
+      OnSelect: =Navigate(scrRemovals)
+      X: =Parent.Width - 440
+      Y: =14
+      Width: =200
+      Height: =40
+- btnRefreshReview:
+    Control: Classic/Button@2.2.0
+    Properties:
+      Text: ="Refresh"
+      OnSelect: |-
+        =Refresh('AD Group Members');
+        Refresh('AD Group Review Decisions');
+        ClearCollect(colMembers, 'AD Group Members');
+        ClearCollect(colDecisions, 'AD Group Review Decisions')
+      X: =Parent.Width - 220
+      Y: =14
+      Width: =200
+      Height: =40
+- txtSearch:
+    Control: Classic/TextInput@2.3.2
+    Properties:
+      Default: =""
+      HintText: ="Search name, account, title, department"
+      AccessibleLabel: ="Search members"
+      X: =20
+      Y: =70
+      Width: =380
+      Height: =44
+- ddGroup:
+    Control: Classic/DropDown@2.3.1
+    Properties:
+      Items: |-
+        =Ungroup(
+            Table(
+                { Options: Table({ Value: "All groups" }) },
+                { Options: Sort(Distinct(colMembers, GroupName), Value) }
+            ),
+            Options
+        )
+      Default: ="All groups"
+      AccessibleLabel: ="Filter by group"
+      X: =410
+      Y: =70
+      Width: =360
+      Height: =44
+- chkDisabled:
+    Control: Classic/CheckBox@2.1.0
+    Properties:
+      Text: ="Only disabled accounts"
+      X: =780
+      Y: =70
+      Width: =240
+      Height: =44
+- ddDecisionFilter:
+    Control: Classic/DropDown@2.3.1
+    Properties:
+      Items: =["All", "Undecided", "Keep", "Remove", "Unsure"]
+      Default: ="All"
+      AccessibleLabel: ="Filter by decision"
+      X: =1030
+      Y: =70
+      Width: =200
+      Height: =44
+- lblCounts:
+    Control: Label@2.5.1
+    Properties:
+      Text: |-
+        ="Shown: " & CountRows(galMembers.AllItems) &
+        "   |   Undecided: " & CountIf(colMembers, Status = "Active" && IsBlank(LookUp(colDecisions, MembershipKey = colMembers[@MembershipKey]).Decision.Value)) &
+        "   |   Marked Remove: " & CountIf(colDecisions, Decision.Value = "Remove")
+      X: =20
+      Y: =122
+      Width: =Parent.Width - 40
+      Height: =32
+      OnSelect: =false
+      TabIndex: =-1
+- galMembers:
+    Control: Gallery@2.15.0
+    Variant: Vertical
+    Properties:
+      Items: |-
+        =Filter(
+            colMembers,
+            Status = "Active",
+            ddGroup.Selected.Value = "All groups" || GroupName = ddGroup.Selected.Value,
+            IsBlank(txtSearch.Text) || txtSearch.Text in Title || txtSearch.Text in Account
+                || txtSearch.Text in JobTitle || txtSearch.Text in Department,
+            !chkDisabled.Value || !AccountEnabled,
+            ddDecisionFilter.Selected.Value = "All" ||
+                Coalesce(LookUp(colDecisions, MembershipKey = colMembers[@MembershipKey]).Decision.Value, "Undecided")
+                    = ddDecisionFilter.Selected.Value
+        )
+      X: =20
+      Y: =160
+      Width: =Parent.Width - 40
+      Height: =Parent.Height - 170
+      TemplateSize: =96
+      TemplatePadding: =0
+      AccessibleLabel: ="Group members to review"
+      TabIndex: =0
+    Children:
+      - lblMemberName:
+          Control: Label@2.5.1
+          Properties:
+            Text: =ThisItem.Title & "  (" & ThisItem.Account & ")"
+            FontWeight: =FontWeight.Semibold
+            VerticalAlign: =VerticalAlign.Top
+            X: =10
+            Y: =6
+            Width: =360
+            Height: =46
+            OnSelect: =false
+            TabIndex: =-1
+      - lblMemberGroup:
+          Control: Label@2.5.1
+          Properties:
+            Text: =ThisItem.GroupName
+            Size: =11
+            Color: =RGBA(96, 94, 92, 1)
+            X: =10
+            Y: =56
+            Width: =360
+            Height: =24
+            OnSelect: =false
+            TabIndex: =-1
+      - lblMemberJob:
+          Control: Label@2.5.1
+          Properties:
+            Text: =ThisItem.JobTitle & " · " & ThisItem.Department
+            Size: =11
+            VerticalAlign: =VerticalAlign.Top
+            X: =380
+            Y: =8
+            Width: =340
+            Height: =56
+            OnSelect: =false
+            TabIndex: =-1
+      - lblMemberFlag:
+          Control: Label@2.5.1
+          Properties:
+            Text: =If(!ThisItem.AccountEnabled, "Disabled", "")
+            Color: =RGBA(168, 0, 0, 1)
+            FontWeight: =FontWeight.Bold
+            X: =730
+            Y: =8
+            Width: =90
+            Height: =28
+            OnSelect: =false
+            TabIndex: =-1
+      - drpDecision:
+          Control: Classic/DropDown@2.3.1
+          Properties:
+            Items: =["Keep", "Remove", "Unsure"]
+            AllowEmptySelection: =true
+            AccessibleLabel: ="Decision for " & ThisItem.Title & " in " & ThisItem.GroupName
+            Default: =LookUp(colDecisions, MembershipKey = ThisItem.MembershipKey).Decision.Value
+            OnChange: |-
+              =With(
+                  { existing: LookUp(colDecisions, MembershipKey = ThisItem.MembershipKey), newValue: Self.Selected.Value },
+                  If(
+                      Coalesce(existing.Decision.Value, "") <> Coalesce(newValue, ""),
+                      With(
+                          {
+                              saved: If(
+                                  IsBlank(existing),
+                                  Patch('AD Group Review Decisions', Defaults('AD Group Review Decisions'),
+                                      { Title: ThisItem.MembershipKey, MembershipKey: ThisItem.MembershipKey, Decision: { Value: newValue } }),
+                                  Patch('AD Group Review Decisions', existing,
+                                      { Decision: { Value: newValue } })
+                              )
+                          },
+                          If(
+                              IsError(saved),
+                              Notify("Could not save the decision. Please try again.", NotificationType.Error),
+                              If(IsBlank(existing), Collect(colDecisions, saved), Patch(colDecisions, existing, saved));
+                              Notify("Saved", NotificationType.Success, 1500)
+                          )
+                      )
+                  )
+              )
+            X: =830
+            Y: =8
+            Width: =150
+            Height: =40
+      - txtComment:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Default: =LookUp(colDecisions, MembershipKey = ThisItem.MembershipKey).Comment
+            HintText: ="Comment"
+            AccessibleLabel: ="Comment for " & ThisItem.Title & " in " & ThisItem.GroupName
+            OnChange: |-
+              =With(
+                  { existing: LookUp(colDecisions, MembershipKey = ThisItem.MembershipKey), newValue: Self.Text },
+                  If(
+                      Coalesce(existing.Comment, "") <> Coalesce(newValue, ""),
+                      With(
+                          {
+                              saved: If(
+                                  IsBlank(existing),
+                                  Patch('AD Group Review Decisions', Defaults('AD Group Review Decisions'),
+                                      { Title: ThisItem.MembershipKey, MembershipKey: ThisItem.MembershipKey, Comment: newValue }),
+                                  Patch('AD Group Review Decisions', existing,
+                                      { Comment: newValue })
+                              )
+                          },
+                          If(
+                              IsError(saved),
+                              Notify("Could not save the comment. Please try again.", NotificationType.Error),
+                              If(IsBlank(existing), Collect(colDecisions, saved), Patch(colDecisions, existing, saved));
+                              Notify("Saved", NotificationType.Success, 1500)
+                          )
+                      )
+                  )
+              )
+            X: =990
+            Y: =8
+            Width: =Parent.TemplateWidth - 1000
+            Height: =40
+      - lblReviewer:
+          Control: Label@2.5.1
+          Properties:
+            Text: |-
+              =With(
+                  { d: LookUp(colDecisions, MembershipKey = ThisItem.MembershipKey) },
+                  If(IsBlank(d), "", "by " & d.'Modified By'.DisplayName & "  " & Text(d.Modified, "yyyy-mm-dd hh:mm"))
+              )
+            Size: =10
+            Color: =RGBA(96, 94, 92, 1)
+            X: =830
+            Y: =54
+            Width: =Parent.TemplateWidth - 840
+            Height: =28
+            OnSelect: =false
+            TabIndex: =-1
+      - sepMember:
+          Control: Rectangle@2.3.0
+          Properties:
+            Fill: =RGBA(225, 223, 221, 1)
+            X: =0
+            Y: =Parent.TemplateHeight - 1
+            Width: =Parent.TemplateWidth
+            Height: =1
+            OnSelect: =false
+            TabIndex: =-1

@@ -1,0 +1,147 @@
+# Paste into screen "scrRemovals": Tree view → select scrRemovals → right-click → Paste code (or Ctrl+V).
+- lblRemovalsTitle:
+    Control: Label@2.5.1
+    Properties:
+      Text: ="Approved removals"
+      X: =20
+      Y: =10
+      Width: =500
+      Height: =44
+      Size: =20
+      FontWeight: =FontWeight.Bold
+      OnSelect: =false
+      TabIndex: =-1
+- btnBackToReview:
+    Control: Classic/Button@2.2.0
+    Properties:
+      Text: ="Back to review"
+      OnSelect: =Navigate(scrReview)
+      X: =Parent.Width - 220
+      Y: =14
+      Width: =200
+      Height: =40
+- lblRemovalsCounts:
+    Control: Label@2.5.1
+    Properties:
+      Text: |-
+        ="Pending: " & CountRows(Filter(galRemovals.AllItems, Status = "Active")) &
+        "   |   Completed: " & CountRows(Filter(galRemovals.AllItems, Status = "Left group"))
+      X: =20
+      Y: =60
+      Width: =Parent.Width * 0.55
+      Height: =32
+      OnSelect: =false
+      TabIndex: =-1
+- galRemovals:
+    Control: Gallery@2.15.0
+    Variant: Vertical
+    Properties:
+      Items: =Filter(colMembers, LookUp(colDecisions, MembershipKey = colMembers[@MembershipKey]).Decision.Value = "Remove")
+      X: =20
+      Y: =100
+      Width: =Parent.Width * 0.55
+      Height: =Parent.Height - 110
+      TemplateSize: =84
+      TemplatePadding: =0
+      AccessibleLabel: ="Approved removals"
+      TabIndex: =0
+    Children:
+      - lblRemName:
+          Control: Label@2.5.1
+          Properties:
+            Text: =ThisItem.Title & "  (" & ThisItem.Account & ")"
+            FontWeight: =FontWeight.Semibold
+            X: =10
+            Y: =4
+            Width: =Parent.TemplateWidth - 150
+            Height: =26
+            OnSelect: =false
+            TabIndex: =-1
+      - lblRemGroup:
+          Control: Label@2.5.1
+          Properties:
+            Text: |-
+              ="Remove from: " & ThisItem.GroupName
+            Size: =11
+            X: =10
+            Y: =30
+            Width: =Parent.TemplateWidth - 150
+            Height: =24
+            OnSelect: =false
+            TabIndex: =-1
+      - lblRemComment:
+          Control: Label@2.5.1
+          Properties:
+            Text: |-
+              =With(
+                  { d: LookUp(colDecisions, MembershipKey = ThisItem.MembershipKey) },
+                  Coalesce(d.Comment, "") & If(IsBlank(d), "", "  — " & d.'Modified By'.DisplayName & " " & Text(d.Modified, "yyyy-mm-dd"))
+              )
+            Size: =10
+            Color: =RGBA(96, 94, 92, 1)
+            X: =10
+            Y: =54
+            Width: =Parent.TemplateWidth - 150
+            Height: =24
+            OnSelect: =false
+            TabIndex: =-1
+      - lblRemStatus:
+          Control: Label@2.5.1
+          Properties:
+            Text: =If(ThisItem.Status = "Left group", "Completed " & Text(ThisItem.LeftOn, "yyyy-mm-dd"), "Pending")
+            Color: =If(ThisItem.Status = "Left group", RGBA(16, 124, 16, 1), RGBA(202, 80, 16, 1))
+            FontWeight: =FontWeight.Bold
+            Align: =Align.Right
+            X: =Parent.TemplateWidth - 140
+            Y: =4
+            Width: =130
+            Height: =26
+            OnSelect: =false
+            TabIndex: =-1
+      - sepRemoval:
+          Control: Rectangle@2.3.0
+          Properties:
+            Fill: =RGBA(225, 223, 221, 1)
+            X: =0
+            Y: =Parent.TemplateHeight - 1
+            Width: =Parent.TemplateWidth
+            Height: =1
+            OnSelect: =false
+            TabIndex: =-1
+- lblOptionATitle:
+    Control: Label@2.5.1
+    Properties:
+      Text: ="How to remove – Group Self-Service Administration"
+      FontWeight: =FontWeight.Bold
+      X: =Parent.Width * 0.55 + 40
+      Y: =60
+      Width: =Parent.Width * 0.45 - 60
+      Height: =32
+      OnSelect: =false
+      TabIndex: =-1
+- lblOptionASteps:
+    Control: Label@2.5.1
+    Properties:
+      Text: |-
+        ="1. Open Group Self-Service Administration (button below).
+        2. Open the group shown in 'Remove from'.
+        3. Find the person by Account and remove them.
+        4. You must be an owner/manager of the group; otherwise ask the group owner.
+        Changes reach Azure in about 30 minutes. The next daily run marks the row Completed."
+      Size: =11
+      VerticalAlign: =VerticalAlign.Top
+      X: =Parent.Width * 0.55 + 40
+      Y: =96
+      Width: =Parent.Width * 0.45 - 60
+      Height: =130
+      OnSelect: =false
+      TabIndex: =-1
+- btnOpenSelfService:
+    Control: Classic/Button@2.2.0
+    Properties:
+      Text: ="Open Group Self-Service Administration"
+      OnSelect: =Launch("https://oxy.service-now.com/it?id=sc_cat_item_guide&sys_id=c9b0ed7b87b6b090960c0ed5cebb3545&table=sc_cat_item&searchTerm=group%20self-service%20administration")
+      X: =Parent.Width * 0.55 + 40
+      Y: =232
+      Width: =340
+      Height: =44

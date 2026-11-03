@@ -1,0 +1,4 @@
+# Directory snapshot and review decisions contain employee data
+data/
+.venv/
+__pycache__/

@@ -1,0 +1,3 @@
+[client]
+# Hide the "Deploy" button and developer-only menu items.
+toolbarMode = "viewer"
